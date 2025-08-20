@@ -58,6 +58,3 @@ Bootstrap 5 (UI)
 
 📤 CSV export/import
 
-📜 License
-
-MIT — free to use and modify.
