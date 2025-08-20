@@ -4,15 +4,7 @@ A simple web application for tracking income and expenses. This is a minimal via
 
 ✨ Features
 
-Add income and expenses
-
-View monthly totals (Income, Expenses, Balance)
-
-Transaction table for the current month
-
-Delete transactions
-
-Switch between months
+✔️ Add income and expenses✔️ View monthly totals (Income, Expenses, Balance)✔️ Transaction table for the current month✔️ Delete transactions✔️ Switch between months
 
 🚀 Installation & Run
 
@@ -33,16 +25,16 @@ pip install -r requirements.txt
 
 python app.py
 
-Then open http://127.0.0.1:5000 in your browser.
+➡️ Then open http://127.0.0.1:5000 in your browser.
 
 📂 Project structure
 
 personal-budget-tracker/
-├─ app.py              # main Flask code
-├─ requirements.txt    # dependencies
-├─ templates/          # HTML templates (base.html, index.html)
-├─ instance/           # SQLite database (auto-created)
-└─ .gitignore
+├── app.py              # main Flask code
+├── requirements.txt    # dependencies
+├── templates/          # HTML templates (base.html, index.html)
+├── instance/           # SQLite database (auto-created)
+└── .gitignore
 
 🛠 Tech stack
 
@@ -69,4 +61,3 @@ Bootstrap 5 (UI)
 📜 License
 
 MIT — free to use and modify.
-
