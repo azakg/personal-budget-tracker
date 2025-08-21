@@ -10,7 +10,7 @@ APP_NAME = "Budget Tracker"
 DB_NAME = "budget.db"
 
 app = Flask(__name__, instance_relative_config=True)
-app.config['SECRET_KEY'] = 'dev-key-change-me'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-me')
 
 # Ensure instance folder exists
 Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -221,8 +221,7 @@ def set_budget():
         INSERT INTO budgets (year, month, amount)
         VALUES (?, ?, ?)
         ON CONFLICT(year, month) DO UPDATE SET amount = excluded.amount
-        """,
-        (y, m, amount)
+        """,        (y, m, amount)
     )
     conn.commit()
     conn.close()
@@ -248,8 +247,7 @@ def export_csv():
         FROM transactions
         WHERE tx_date BETWEEN ? AND ?
         ORDER BY tx_date ASC, id ASC
-        """,
-        (first, last)
+        """,        (first, last)
     ).fetchall()
     conn.close()
 
