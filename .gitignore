@@ -11,3 +11,7 @@ instance/
 
 # OS files
 .DS_Store
+
+# Terraform
+infra/
+.idea
