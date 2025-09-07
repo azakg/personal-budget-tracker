@@ -1,0 +1,20 @@
+i{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Edit Transaction #{{ tx['id'] }}</h2>
+  <form method="post">
+    <div class="row">
+      <input type="date" name="tx_date" value="{{ tx['tx_date'] }}" required>
+      <select name="kind" required>
+        <option value="expense" {% if tx['kind']=='expense' %}selected{% endif %}>Expense</option>
+        <option value="income" {% if tx['kind']=='income' %}selected{% endif %}>Income</option>
+      </select>
+      <input type="text" name="category" value="{{ tx['category'] }}" placeholder="Category">
+      <input type="number" step="0.01" name="amount" value="{{ '%.2f'|format(tx['amount']) }}" required>
+      <input type="text" name="note" value="{{ tx['note'] or '' }}" placeholder="Note (optional)" style="flex:1">
+      <button type="submit">Save</button>
+    </div>
+  </form>
+  <p><a href="{{ url_for('index') }}">← Back</a></p>
+</div>
+{% endblock %}
