@@ -29,18 +29,27 @@ module "vpc" {
 module "eks" {
   source          = "terraform-aws-modules/eks/aws"
   version         = "~> 20.0"
+
   cluster_name    = "${var.project}-eks"
   cluster_version = var.eks_version
 
-  subnet_ids = module.vpc.private_subnets
   vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.public_subnets
+
+  # ВАЖНО: включаем публичный endpoint и отключаем приватный
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = false
+
+  # (опционально можно сузить CIDR)
+  # cluster_endpoint_public_access_cidrs = ["<твой_публичный_IP>/32"]
 
   eks_managed_node_groups = {
     default = {
-      desired_size   = 2
-      min_size       = 1
-      max_size       = 3
-      instance_types = ["t3.small"]
+      desired_size   = 1
+      min_size       = 0
+      max_size       = 2
+      instance_types = ["t3.micro"] # или что у тебя сейчас
+      subnet_ids     = module.vpc.public_subnets
     }
   }
 }

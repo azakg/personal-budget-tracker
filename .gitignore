@@ -1,17 +1,25 @@
-# Python cache
+# === Python / Flask ===
 __pycache__/
-*.pyc
-
-# Virtual environment
+*.py[cod]
+*.egg-info/
 .venv/
-
-# SQLite database
+venv/
 instance/
+*.sqlite3
 *.db
 
-# OS files
-.DS_Store
+# === Terraform (НЕ коммитим бинарники, стейты, планы) ===
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+.terraformrc
+terraform.rc
 
-# Terraform
-infra/
-.idea
+# === OS / IDE ===
+.DS_Store
+.idea/
+.vscode/
+
