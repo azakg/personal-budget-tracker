@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Upload a Receipt</h2>
+  <form id="form" enctype="multipart/form-data">
+    <input type="file" name="receipt" accept="image/*" required>
+    <button type="submit">Upload</button>
+  </form>
+  <pre id="result"></pre>
+  <script>
+    document.getElementById('form').onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const res = await fetch('/upload_receipt', { method: 'POST', body: formData });
+      const data = await res.text();
+      document.getElementById('result').textContent = data;
+    };
+  </script>
+{% endblock %}

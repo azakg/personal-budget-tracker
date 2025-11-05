@@ -6,7 +6,7 @@ from datetime import date, datetime
 from pathlib import Path
 from calendar import monthrange
 
-from flask import Flask, render_template, request, redirect, url_for, flash, Response
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, Response
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
@@ -490,6 +490,28 @@ def export_xlsx():
     return Response(stream.read(),
                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+# ---------- Receipt upload ----------
+@app.route("/upload")
+@login_required
+def upload_page():
+    return render_template("upload_receipt.html")
+
+@app.route("/upload_receipt", methods=["POST"])
+@login_required
+def upload_receipt():
+    if "receipt" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    file = request.files["receipt"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    # сохраняем в static/uploads
+    os.makedirs("static/uploads", exist_ok=True)
+    filepath = os.path.join("static/uploads", file.filename)
+    file.save(filepath)
+
+    return jsonify({"message": "Receipt uploaded successfully", "path": filepath})
 
 if __name__ == "__main__":
     init_db()
