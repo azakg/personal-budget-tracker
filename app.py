@@ -2,6 +2,7 @@ import os
 import io
 import csv
 import sqlite3
+import boto3
 from datetime import date, datetime
 from pathlib import Path
 from calendar import monthrange
@@ -492,26 +493,44 @@ def export_xlsx():
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 # ---------- Receipt upload ----------
-@app.route("/upload")
-@login_required
-def upload_page():
-    return render_template("upload_receipt.html")
-
 @app.route("/upload_receipt", methods=["POST"])
 @login_required
 def upload_receipt():
     if "receipt" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
+
     file = request.files["receipt"]
     if file.filename == "":
         return jsonify({"error": "Empty filename"}), 400
 
-    # сохраняем в static/uploads
     os.makedirs("static/uploads", exist_ok=True)
     filepath = os.path.join("static/uploads", file.filename)
     file.save(filepath)
 
-    return jsonify({"message": "Receipt uploaded successfully", "path": filepath})
+    # 1️⃣ Инициализируем клиента Textract
+    textract = boto3.client("textract", region_name="us-east-1")
+
+    # 2️⃣ Читаем изображение в байтах
+    with open(filepath, "rb") as img_file:
+        bytes_data = img_file.read()
+
+    # 3️⃣ Вызываем Textract
+    response = textract.detect_document_text(Document={"Bytes": bytes_data})
+
+    # 4️⃣ Собираем весь распознанный текст построчно
+    extracted_text = "\n".join(
+        block.get("DetectedText") or block.get("Text", "")
+        for block in response.get("Blocks", [])
+        if block.get("BlockType") == "LINE"
+    )
+    print("🔍 Textract raw response:")
+    print(response)
+
+    return jsonify({
+        "message": f"Receipt uploaded and analyzed successfully",
+        "path": filepath,
+        "extracted_text": extracted_text
+    })
 
 if __name__ == "__main__":
     init_db()

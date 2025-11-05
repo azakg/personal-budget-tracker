@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
+
 <!-- Summary + Month nav -->
 <div class="card">
   <div class="row" style="align-items:center; justify-content:space-between">
@@ -128,5 +129,40 @@
   });
 </script>
 {% endif %}
+
+<h3>Upload a Receipt</h3>
+<form id="receiptForm" enctype="multipart/form-data" style="margin-bottom: 1em;">
+  <input type="file" name="receipt" accept="image/*" required>
+  <button type="submit">Upload</button>
+</form>
+
+<pre id="uploadResult" style="background:#f6f8fa; padding:10px; border-radius:8px;"></pre>
+
+<script>
+document.getElementById('receiptForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const response = await fetch('/upload_receipt', { method: 'POST', body: formData });
+  const data = await response.json();
+  const resultBox = document.getElementById('uploadResult');
+  if (data.error) {
+    resultBox.textContent = "❌ " + data.error;
+  } else {
+    resultBox.innerHTML = `
+      <p>✅ <b>${data.message}</b></p>
+      <h4>Extracted Text:</h4>
+      <pre style="background:#fdfdfd; color:#000; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:0.95em; border:1px solid #ddd;">
+      ${data.extracted_text || "(no text detected)"}
+      </pre>
+      ${data.structured_data ? `
+        <h4>Structured Data:</h4>
+        <pre style="background:#111; color:#00ffcc; padding:12px; border-radius:8px; font-family:monospace; font-size:0.95em;">
+  ${data.structured_data}
+        </pre>
+      ` : ""}
+    `;
+  }
+};
+</script>
 
 {% endblock %}
