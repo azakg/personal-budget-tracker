@@ -142,25 +142,26 @@
 document.getElementById('receiptForm').onsubmit = async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
-  const response = await fetch('/upload_receipt', { method: 'POST', body: formData });
-  const data = await response.json();
-  const resultBox = document.getElementById('uploadResult');
+  const res = await fetch('/upload_receipt', { method: 'POST', body: formData });
+  const data = await res.json();
+
+  const box = document.getElementById('uploadResult');
   if (data.error) {
-    resultBox.textContent = "❌ " + data.error;
-  } else {
-    resultBox.innerHTML = `
-      <p>✅ <b>${data.message}</b></p>
-      <h4>Extracted Text:</h4>
-      <pre style="background:#fdfdfd; color:#000; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:0.95em; border:1px solid #ddd;">
-      ${data.extracted_text || "(no text detected)"}
-      </pre>
-      ${data.structured_data ? `
-        <h4>Structured Data:</h4>
-        <pre style="background:#111; color:#00ffcc; padding:12px; border-radius:8px; font-family:monospace; font-size:0.95em;">
-  ${data.structured_data}
-        </pre>
-      ` : ""}
-    `;
+    box.textContent = "❌ " + (data.error || "Failed");
+    return;
+  }
+
+  // Покажем краткий результат
+  box.innerHTML = `
+    <p>✅ <b>${data.message}</b></p>
+    <h4>Extracted Text:</h4>
+    <pre style="background:#f6f8fa; color:#000; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:0.95em;">${data.extracted_text || "(no text)"}</pre>
+    ${data.ai_parsed ? `<h4>AI Parsed:</h4><pre style="background:#f6f8fa; color:#000; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:0.95em;">${JSON.stringify(data.ai_parsed, null, 2)}</pre>` : ""}
+  `;
+
+  // Если транзакция действительно добавлена — обновим страницу, чтобы увидеть её в таблице
+  if (data.ai_parsed && !data.error) {
+    setTimeout(() => window.location.reload(), 400);
   }
 };
 </script>

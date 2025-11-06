@@ -1,6 +1,8 @@
+import re
 import os
 import io
 import csv
+import json
 import sqlite3
 import boto3
 from datetime import date, datetime
@@ -14,6 +16,38 @@ from flask_login import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from openpyxl import Workbook
+
+# ---------- AI + Env setup ----------
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()  # загружаем переменные из .env
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+print("🔑 OpenAI API Key loaded:", os.getenv("OPENAI_API_KEY")[:10], "...")
+
+def _to_amount(val) -> float:
+    """Превращает '38.70', '$ 38.70', 'USD 38,70' -> 38.70"""
+    s = str(val) if val is not None else ""
+    s = s.replace(",", "")
+    m = re.search(r'(\d+(?:\.\d{1,2})?)', s)
+    return float(m.group(1)) if m else 0.0
+
+def _to_iso_date(val: str, fallback: str) -> str:
+    """Принимает '2025-10-12', '10/12/25', '10/12/2025' -> 'YYYY-MM-DD'"""
+    s = (val or "").strip()
+    # ISO уже
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
+        return s
+    # MM/DD/YY или MM/DD/YYYY
+    m = re.match(r'^(\d{1,2})/(\d{1,2})/(\d{2,4})$', s)
+    if m:
+        mm, dd, yy = m.groups()
+        yy = int(yy)
+        if yy < 100:
+            yy += 2000
+        return f"{yy:04d}-{int(mm):02d}-{int(dd):02d}"
+    return fallback
 
 APP_NAME = "Personal Budget Tracker"
 DB_NAME = "budget.db"
@@ -507,30 +541,102 @@ def upload_receipt():
     filepath = os.path.join("static/uploads", file.filename)
     file.save(filepath)
 
-    # 1️⃣ Инициализируем клиента Textract
+    # 1) Textract
     textract = boto3.client("textract", region_name="us-east-1")
-
-    # 2️⃣ Читаем изображение в байтах
     with open(filepath, "rb") as img_file:
         bytes_data = img_file.read()
-
-    # 3️⃣ Вызываем Textract
     response = textract.detect_document_text(Document={"Bytes": bytes_data})
 
-    # 4️⃣ Собираем весь распознанный текст построчно
     extracted_text = "\n".join(
         block.get("DetectedText") or block.get("Text", "")
         for block in response.get("Blocks", [])
         if block.get("BlockType") == "LINE"
     )
-    print("🔍 Textract raw response:")
-    print(response)
+    print("🔍 Textract extracted text (first 500 chars):\n", extracted_text[:500])
+
+    # 2) ChatGPT
+    prompt = f"""
+    You are an assistant that reads receipts and extracts transaction details.
+    Return ONLY JSON with keys: category (one of Grocery, Car, Utilities, Apartment Rent, Entertainment, Health, Other),
+    amount (number), note (short), date (YYYY-MM-DD). If unsure use 'Other' for category.
+    Receipt:
+    ---
+    {extracted_text}
+    ---
+    """
+
+    parsed = None
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a precise financial extraction AI agent."},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        ai_resp = completion.choices[0].message.content
+        print("🤖 ChatGPT raw:", ai_resp)
+        parsed = json.loads(ai_resp or "{}")
+    except Exception as e:
+        print("❌ ChatGPT error:", e)
+        parsed = {}  # пустой словарь для fallback
+
+    # 3) Нормализация и вставка в БД (fallback-защита)
+    tx_date = _to_iso_date(parsed.get("date"), date.today().isoformat())
+    category = (parsed.get("category") or "Other").strip() or "Other"
+    note = (parsed.get("note") or "AI-generated transaction").strip()
+    amount = _to_amount(parsed.get("amount"))
+
+    # Если ChatGPT вообще не выдал ничего — попробуем хотя бы сумму вытащить из текста
+    if amount == 0.0:
+        m = re.findall(r'\$?\s?(\d+\.\d{2})', extracted_text.replace(",", ""))
+        if m:
+            amount = float(m[-1])  # берём последнее «итого»
+
+    # Простейшие эвристики для категории (на случай, если AI не определил)
+    low = extracted_text.lower()
+    if category == "Other":
+        if "gallon" in low or "gas" in low or "fuel" in low or "pump" in low:
+            category = "Car"
+        elif "costco" in low or "walmart" in low or "kroger" in low or "aldi" in low:
+            category = "Grocery"
+        elif "netflix" in low or "cinema" in low or "movie" in low or "theater" in low:
+            category = "Entertainment"
+
+    print("🧾 Parsed data before DB insert:", parsed)
+    try:
+        conn = get_db()
+        conn.execute(
+            """
+            INSERT INTO transactions (user_id, tx_date, kind, category, amount, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                current_user.id,
+                tx_date,
+                "expense",
+                category,
+                amount,
+                note,
+                datetime.utcnow().isoformat(),
+            ),
+        )
+        conn.commit()
+        print("✅ Transaction inserted successfully into DB")
+        conn.close()
+        inserted = True
+    except Exception as e:
+        print("❌ DB insert error:", e)
+        inserted = False
 
     return jsonify({
-        "message": f"Receipt uploaded and analyzed successfully",
+        "message": "✅ Receipt uploaded and transaction added automatically" if inserted else "⚠️ Uploaded, but failed to add transaction",
         "path": filepath,
-        "extracted_text": extracted_text
-    })
+        "extracted_text": extracted_text,
+        "ai_parsed": {"date": tx_date, "category": category, "amount": amount, "note": note} if inserted else None,
+        "error": None if inserted else "Insert failed; see server logs"
+    }), (200 if inserted else 500)
 
 if __name__ == "__main__":
     init_db()
