@@ -1,4 +1,4 @@
-i{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <div class="card">
   <h2>Edit Transaction #{{ tx['id'] }}</h2>
@@ -15,6 +15,6 @@ i{% extends "base.html" %}
       <button type="submit">Save</button>
     </div>
   </form>
-  <p><a href="{{ url_for('index') }}">← Back</a></p>
+  <p><a href="{{ url_for('main.index') }}">← Back</a></p>
 </div>
 {% endblock %}
