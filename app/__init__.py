@@ -16,7 +16,15 @@ def create_app(config_name='default'):
     Returns:
         Configured Flask application instance
     """
-    app = Flask(__name__, instance_relative_config=True)
+    # Get the base directory (parent of app package)
+    base_dir = Path(__file__).parent.parent
+
+    app = Flask(
+        __name__,
+        instance_relative_config=True,
+        template_folder=str(base_dir / 'templates'),
+        static_folder=str(base_dir / 'static')
+    )
 
     # Load configuration
     app.config.from_object(config[config_name])
