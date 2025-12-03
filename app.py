@@ -493,5 +493,5 @@ def export_xlsx():
 
 if __name__ == "__main__":
     init_db()
-    port = int(os.getenv("PORT", "5000"))
+    port = int(os.getenv("PORT", "5001"))
     app.run(debug=True, port=port)
