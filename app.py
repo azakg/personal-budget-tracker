@@ -448,7 +448,7 @@ def export_csv():
     filename = f"transactions_{y}-{m:02d}.csv"
     return Response(csv_bytes, mimetype="text/csv",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
-
+#экспорт данных в формате Excel и CSV.
 @app.route("/export.xlsx")
 @login_required
 def export_xlsx():
