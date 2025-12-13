@@ -7,6 +7,7 @@ venv/
 instance/
 *.sqlite3
 *.db
+.env
 
 # === Terraform (НЕ коммитим бинарники, стейты, планы) ===
 **/.terraform/
@@ -23,3 +24,4 @@ terraform.rc
 .idea/
 .vscode/
 
+.env
