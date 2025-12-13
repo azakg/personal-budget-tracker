@@ -15,29 +15,29 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from openpyxl import Workbook
 
 APP_NAME = "Personal Budget Tracker"
-DB_NAME = "budget.db"
+NAME_OF_DB = "budget.db"
 
 app = Flask(__name__, instance_relative_config=True)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-key-change-me")
 
 # Ensure instance folder exists and DB path set
 Path(app.instance_path).mkdir(parents=True, exist_ok=True)
-DB_PATH = os.path.join(app.instance_path, DB_NAME)
+DB_PATH = os.path.join(app.instance_path, NAME_OF_DB)
 
-# ---------- DB helpers ----------
+# Помошьники для работы с БД
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
+    conn_db = sqlite3.connect(DB_PATH)
+    conn_db.row_factory = sqlite3.Row
+    conn_db.execute("PRAGMA foreign_keys = ON;")
+    return conn_db
 
 def init_db():
-    conn = get_db()
-    conn.executescript(
+    conn_init = get_db()
+    conn_init.executescript(
         """
         PRAGMA foreign_keys = ON;
 
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS users (  
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
@@ -66,14 +66,14 @@ def init_db():
         );
         """
     )
-    conn.commit()
-    conn.close()
+    conn_init.commit()
+    conn_init.close()
 
 def month_bounds(year: int, month: int):
     last = monthrange(year, month)[1]
     return date(year, month, 1).isoformat(), date(year, month, last).isoformat()
 
-# ---------- Auth ----------
+# --- Аутентификация ДЛля пользователей
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
@@ -95,7 +95,7 @@ def load_user(user_id: str):
     except Exception:
         return None
 
-# ---------- Auth routes ----------
+# ---Роуты для регитрации Login Users
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -153,7 +153,7 @@ def logout():
     flash("Logged out.", "info")
     return redirect(url_for("login"))
 
-# ---------- Helpers for filters ----------
+# Фильтры и вспомогательные функции
 def parse_filters(default_year: int, default_month: int):
     """Returns (date_from, date_to, category) derived from query args.
        If no custom range given, falls back to month bounds."""
