@@ -32,11 +32,11 @@
         <strong>{{ app_name }}</strong>
         {% if current_user.is_authenticated %}
           <span style="margin-left:auto">{{ current_user.email }}</span>
-          <a href="{{ url_for('logout') }}">Logout</a>
+          <a href="{{ url_for('auth.logout') }}">Logout</a>
         {% else %}
           <span style="margin-left:auto"></span>
-          <a href="{{ url_for('login') }}">Login</a>
-          <a href="{{ url_for('register') }}">Register</a>
+          <a href="{{ url_for('auth.login') }}">Login</a>
+          <a href="{{ url_for('auth.register') }}">Register</a>
         {% endif %}
       </div>
 
