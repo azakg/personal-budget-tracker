@@ -61,16 +61,28 @@
 <!-- Add -->
 <div class="card">
   <h3>Add Transaction</h3>
-  <form method="post" action="{{ url_for('main.add') }}">
+  <div style="margin:.25rem 0 .75rem">
+    <strong>Upload a Receipt</strong>
+    <div style="color:#666; font-size:.9rem">Upload a receipt to auto-fill the form below.</div>
+  </div>
+  <form id="receiptForm" enctype="multipart/form-data" style="margin-bottom: 1em;">
     <div class="row">
-      <input type="date" name="tx_date" value="{{ today }}" required>
-      <select name="kind" required>
+      <input type="file" name="receipt" accept="image/*" required>
+      <input type="hidden" name="auto_add" value="0">
+      <button type="submit">Upload</button>
+    </div>
+  </form>
+  <pre id="uploadResult" style="background:#f6f8fa; padding:10px; border-radius:8px; display:none;"></pre>
+  <form id="addTransactionForm" method="post" action="{{ url_for('main.add') }}">
+    <div class="row">
+      <input id="txDate" type="date" name="tx_date" value="{{ today }}" required>
+      <select id="txKind" name="kind" required>
         <option value="expense">Expense</option>
         <option value="income">Income</option>
       </select>
-      <input type="text" name="category" placeholder="Category (e.g., Food)">
-      <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-      <input type="text" name="note" placeholder="Note (optional)" style="flex:1">
+      <input id="txCategory" type="text" name="category" placeholder="Category (e.g., Food)">
+      <input id="txAmount" type="number" step="0.01" name="amount" placeholder="Amount" required>
+      <input id="txNote" type="text" name="note" placeholder="Note (optional)" style="flex:1">
       <button type="submit">Add</button>
     </div>
   </form>
@@ -130,14 +142,6 @@
 </script>
 {% endif %}
 
-<h3>Upload a Receipt (RECEIPT-UPLOAD-V2)</h3>
-<form id="receiptForm" enctype="multipart/form-data" style="margin-bottom: 1em;">
-  <input type="file" name="receipt" accept="image/*" required>
-  <button type="submit">Upload</button>
-</form>
-
-<pre id="uploadResult" style="background:#f6f8fa; padding:10px; border-radius:8px;"></pre>
-
 <script>
 document.getElementById('receiptForm').onsubmit = async (e) => {
   e.preventDefault();
@@ -146,12 +150,12 @@ document.getElementById('receiptForm').onsubmit = async (e) => {
   const data = await res.json();
 
   const box = document.getElementById('uploadResult');
+  box.style.display = 'block';
   if (data.error) {
     box.textContent = "❌ " + (data.error || "Failed");
     return;
   }
 
-  // Покажем краткий результат
   box.innerHTML = `
     <p>✅ <b>${data.message}</b></p>
     <h4>Extracted Text:</h4>
@@ -159,9 +163,19 @@ document.getElementById('receiptForm').onsubmit = async (e) => {
     ${data.ai_parsed ? `<h4>AI Parsed:</h4><pre style="background:#f6f8fa; color:#000; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:0.95em;">${JSON.stringify(data.ai_parsed, null, 2)}</pre>` : ""}
   `;
 
-  // Если транзакция действительно добавлена — обновим страницу, чтобы увидеть её в таблице
-  if (data.ai_parsed && !data.error) {
-    setTimeout(() => window.location.reload(), 400);
+  if (data.ai_parsed) {
+    const parsed = data.ai_parsed;
+    const dateInput = document.getElementById('txDate');
+    const kindSelect = document.getElementById('txKind');
+    const categoryInput = document.getElementById('txCategory');
+    const amountInput = document.getElementById('txAmount');
+    const noteInput = document.getElementById('txNote');
+
+    if (parsed.date) dateInput.value = parsed.date;
+    if (parsed.category) categoryInput.value = parsed.category;
+    if (parsed.amount) amountInput.value = parsed.amount;
+    if (parsed.note) noteInput.value = parsed.note;
+    kindSelect.value = 'expense';
   }
 };
 </script>
